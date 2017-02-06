@@ -139,6 +139,10 @@ class CustomPlayer:
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
 
+            # if we are not doing iterative deeping, call the search method once for as deep a we're allowed
+            # otherwise, we are doing iterative deeping so repeated call the search method starting at a depth 2 (top level, plus it's children)
+            # and continue to increase the # of levels until we finish, or time runs out, and return the best score move seen until then
+
             if not self.iterative:
                 _,bestmove = self.function_mappings[self.method](game, self.search_depth)
             else:
@@ -192,28 +196,24 @@ class CustomPlayer:
         lmoves = game.get_legal_moves()
         if not lmoves:
             return self.score(game,self), (-1,-1)
-
+        bestscore = None
         if maximizing_player:
-            bestscore, bestmove = max([(self.score(game.forecast_move(m), self), m) for m in lmoves])
-        else:
-            bestscore, bestmove = min([(self.score(game.forecast_move(m), self), m) for m in lmoves])
-
-        for m in lmoves:
-            newgame = game.copy()
-            newgame.apply_move(m)
-#            newgame=game.forecast_move(m)
-            score, move = self.minimax(newgame, depth - 1, not maximizing_player)
-            if maximizing_player:
-                if score > bestscore:
+            for m in lmoves:
+                score, move = self.minimax(game.forecast_move(m), depth - 1, not maximizing_player)
+                if bestscore is None or score > bestscore:
                     bestscore = score
                     bestmove = m
-            else:
-                if score < bestscore:
+        else:
+            for m in lmoves:
+                score, move = self.minimax(game.forecast_move(m), depth - 1, not maximizing_player)
+                if bestscore is None or score < bestscore:
                     bestscore = score
                     bestmove = m
 
         return bestscore, bestmove
 
+    def argsort(self,listtosort, reversed=False):
+        return sorted(range(len(listtosort)),key=listtosort.__getitem__, reverse=reversed)
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -257,24 +257,20 @@ class CustomPlayer:
         if not lmoves:
             return self.score(game,self), (-1,-1)
 
+        bestscore=None
         if maximizing_player:
-            bestscore, bestmove = max([(self.score(game.forecast_move(m), self), m) for m in lmoves])
-        else:
-            bestscore, bestmove = min([(self.score(game.forecast_move(m), self), m) for m in lmoves])
-
-        for m in lmoves:
-            newgame = game.copy()
-            newgame.apply_move(m)
-            score, move = self.alphabeta(newgame, depth - 1, alpha, beta, not maximizing_player)
-            if maximizing_player:
-                if score > bestscore:
+            for m in lmoves:
+                score, move = self.alphabeta(game.forecast_move(m), depth - 1, alpha, beta, not maximizing_player)
+                if bestscore is None or score > bestscore:
                     bestscore = score
                     bestmove = m
                     if bestscore >= beta:
                         return bestscore, bestmove
                     alpha = max(alpha,bestscore)
-            else:
-                if score < bestscore:
+        else:
+            for m in lmoves:
+                score, move = self.alphabeta(game.forecast_move(m), depth - 1, alpha, beta, not maximizing_player)
+                if bestscore is None or score < bestscore:
                     bestscore = score
                     bestmove = m
                     if bestscore <= alpha:
